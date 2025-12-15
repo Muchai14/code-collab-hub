@@ -109,58 +109,39 @@ function executeJavaScript(code: string): CodeExecutionResult {
 }
 
 /**
- * Execute Python code using Pyodide
+ * Execute Python code via Backend API
  */
 async function executePython(code: string): Promise<CodeExecutionResult> {
-  const startTime = performance.now();
-
   try {
-    const pyodide = (await loadPyodide()) as {
-      runPython: (code: string) => unknown;
-      runPythonAsync: (code: string) => Promise<unknown>;
-    };
+    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+    // Remove /api suffix if it exists twice or handle via base URL
+    // Actually, VITE_API_URL usually points to /api
 
-    // Redirect stdout to capture print statements
-    pyodide.runPython(`
-import sys
-from io import StringIO
-sys.stdout = StringIO()
-sys.stderr = StringIO()
-    `);
+    // Construct the URL properly
+    const baseUrl = API_URL.endsWith('/api') ? API_URL : `${API_URL}/api`;
+    const endpoint = `${baseUrl}/execute`;
 
-    // Run the user's code
-    await pyodide.runPythonAsync(code);
+    const response = await fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        code,
+        language: 'python'
+      }),
+    });
 
-    // Get the output
-    const stdout = pyodide.runPython('sys.stdout.getvalue()') as string;
-    const stderr = pyodide.runPython('sys.stderr.getvalue()') as string;
-
-    // Reset stdout/stderr
-    pyodide.runPython(`
-sys.stdout = sys.__stdout__
-sys.stderr = sys.__stderr__
-    `);
-
-    const executionTime = performance.now() - startTime;
-
-    if (stderr) {
-      return {
-        output: stdout,
-        error: stderr,
-        executionTime,
-      };
+    if (!response.ok) {
+      throw new Error(`Execution failed: ${response.statusText}`);
     }
 
-    return {
-      output: stdout || 'Code executed successfully (no output)',
-      executionTime,
-    };
+    return await response.json();
   } catch (error) {
-    const executionTime = performance.now() - startTime;
     return {
       output: '',
       error: error instanceof Error ? error.message : String(error),
-      executionTime,
+      executionTime: 0,
     };
   }
 }

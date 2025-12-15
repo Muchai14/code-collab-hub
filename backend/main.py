@@ -119,6 +119,87 @@ async def get_room(room_id: str, db: AsyncSession = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Room not found")
     return Room.model_validate(room)
 
+from pydantic import BaseModel
+
+class ExecuteCodeRequest(BaseModel):
+    code: str
+    language: str
+
+import subprocess
+import tempfile
+import asyncio
+
+@fastapi_app.post("/api/execute")
+async def execute_code_endpoint(request: ExecuteCodeRequest):
+    start_time = datetime.now()
+    
+    # Simple execution logic (MVP - NOT SANDBOXED)
+    # WARNING: This allows arbitrary code execution.
+    # For production, use a secure sandbox like execution-engine or Docker-in-Docker.
+    
+    output = ""
+    error = ""
+    
+    try:
+        if request.language == "python":
+            # Run python code in a separate process
+            with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
+                f.write(request.code)
+                f_path = f.name
+            
+            try:
+                proc = await asyncio.create_subprocess_exec(
+                    "python", f_path,
+                    stdout=asyncio.subprocess.PIPE,
+                    stderr=asyncio.subprocess.PIPE
+                )
+                stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=5.0)
+                
+                output = stdout.decode() if stdout else ""
+                error = stderr.decode() if stderr else ""
+            except asyncio.TimeoutError:
+                error = "Execution timed out (5s limit)"
+            finally:
+                if os.path.exists(f_path):
+                    os.unlink(f_path)
+                    
+        elif request.language == "javascript":
+            # Run JS using node
+            with tempfile.NamedTemporaryFile(mode='w', suffix='.js', delete=False) as f:
+                f.write(request.code)
+                f_path = f.name
+                
+            try:
+                proc = await asyncio.create_subprocess_exec(
+                    "node", f_path,
+                    stdout=asyncio.subprocess.PIPE,
+                    stderr=asyncio.subprocess.PIPE
+                )
+                stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=5.0)
+                
+                output = stdout.decode() if stdout else ""
+                error = stderr.decode() if stderr else ""
+            except asyncio.TimeoutError:
+                error = "Execution timed out (5s limit)"
+            except FileNotFoundError:
+                error = "Node.js not found in backend container"
+            finally:
+                if os.path.exists(f_path):
+                    os.unlink(f_path)
+        else:
+            return {"error": "Unsupported language", "executionTime": 0}
+
+    except Exception as e:
+        error = str(e)
+
+    execution_time = (datetime.now() - start_time).total_seconds() * 1000
+    
+    return {
+        "output": output,
+        "error": error,
+        "executionTime": execution_time
+    }
+
 # Socket.IO Events
 @sio.event
 async def connect(sid, environ):
