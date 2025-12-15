@@ -22,8 +22,7 @@ jobs:
           cache: 'npm'
           cache-dependency-path: package-lock.json
 
-      - name: Install Dependencies
-        working-directory: ./frontend
+      - name: Install Dependencies (Root - Workspace)
         run: npm install
 
       - name: Debug - List files
