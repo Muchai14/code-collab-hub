@@ -1,0 +1,103 @@
+openapi: 3.0.3
+info:
+  title: CodeInterview API
+  version: 1.0.0
+  description: API for online coding interview platform
+
+servers:
+  - url: http://localhost:3001
+
+paths:
+  /api/rooms:
+    post:
+      summary: Create a new room
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                hostName:
+                  type: string
+                language:
+                  type: string
+                  enum: [javascript, python]
+      responses:
+        '200':
+          description: Room created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RoomResponse'
+
+  /api/rooms/{roomId}:
+    get:
+      summary: Get room by ID
+      parameters:
+        - name: roomId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Room found
+        '404':
+          description: Room not found
+
+  /api/rooms/{roomId}/join:
+    post:
+      summary: Join a room
+      parameters:
+        - name: roomId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                userName:
+                  type: string
+      responses:
+        '200':
+          description: Joined successfully
+
+components:
+  schemas:
+    RoomResponse:
+      type: object
+      properties:
+        room:
+          $ref: '#/components/schemas/Room'
+        user:
+          $ref: '#/components/schemas/User'
+    Room:
+      type: object
+      properties:
+        id:
+          type: string
+        code:
+          type: string
+        language:
+          type: string
+        participants:
+          type: array
+          items:
+            $ref: '#/components/schemas/User'
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        color:
+          type: string
+        isHost:
+          type: boolean
