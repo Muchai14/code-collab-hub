@@ -19,7 +19,13 @@ class WebSocketService {
   connect(roomId: string, userId: string): Promise<void> {
     return new Promise((resolve, reject) => {
       // Initialize socket connection
-      this.socket = io();
+      const API_URL = import.meta.env.VITE_API_URL;
+      const url = API_URL || undefined;
+
+      this.socket = io(url, {
+        transports: ['websocket', 'polling'],
+        reconnectionAttempts: 5,
+      });
 
       this.socket.on('connect', () => {
         this.isConnected = true;
