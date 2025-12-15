@@ -4,7 +4,8 @@ services:
     name: code-collab-db
     plan: free
     region: oregon
-    env: docker
+    databaseName: code_collab_db
+    databaseUser: code_collab
 
   # Web Service (Frontend + Backend)
   - type: web
