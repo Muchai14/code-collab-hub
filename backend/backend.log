@@ -70,3 +70,90 @@ INFO:     127.0.0.1:33878 - "POST /socket.io/?EIO=4&transport=polling&t=t2pr1buj
 INFO:     127.0.0.1:33868 - "GET /socket.io/?EIO=4&transport=polling&t=t2pr0pxm&sid=1fwiYlr6lXD8q2C6AAAC HTTP/1.1" 200 OK
 INFO:     connection closed
 INFO:     connection closed
+WARNING:  WatchFiles detected changes in 'database.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [66476]
+WARNING:  WatchFiles detected changes in 'database.py'. Reloading...
+INFO:     Started server process [76615]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+WARNING:  WatchFiles detected changes in 'db_models.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [76615]
+WARNING:  WatchFiles detected changes in 'db_models.py'. Reloading...
+INFO:     Started server process [76707]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     127.0.0.1:38166 - "GET / HTTP/1.1" 200 OK
+WARNING:  WatchFiles detected changes in 'db_models.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [76707]
+INFO:     Started server process [76863]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+WARNING:  WatchFiles detected changes in 'models.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [76863]
+INFO:     Started server process [76963]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+WARNING:  WatchFiles detected changes in 'main.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [76963]
+INFO:     Started server process [77250]
+INFO:     Waiting for application startup.
+2025-12-15 07:09:04,103 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2025-12-15 07:09:04,103 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("rooms")
+2025-12-15 07:09:04,103 INFO sqlalchemy.engine.Engine [raw sql] ()
+2025-12-15 07:09:04,104 INFO sqlalchemy.engine.Engine PRAGMA temp.table_info("rooms")
+2025-12-15 07:09:04,104 INFO sqlalchemy.engine.Engine [raw sql] ()
+2025-12-15 07:09:04,105 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("users")
+2025-12-15 07:09:04,105 INFO sqlalchemy.engine.Engine [raw sql] ()
+2025-12-15 07:09:04,106 INFO sqlalchemy.engine.Engine PRAGMA temp.table_info("users")
+2025-12-15 07:09:04,106 INFO sqlalchemy.engine.Engine [raw sql] ()
+2025-12-15 07:09:04,107 INFO sqlalchemy.engine.Engine 
+CREATE TABLE rooms (
+	id VARCHAR NOT NULL, 
+	code TEXT, 
+	language VARCHAR(10), 
+	created_at DATETIME, 
+	host_id VARCHAR, 
+	PRIMARY KEY (id)
+)
+
+
+2025-12-15 07:09:04,107 INFO sqlalchemy.engine.Engine [no key 0.00018s] ()
+2025-12-15 07:09:04,149 INFO sqlalchemy.engine.Engine CREATE INDEX ix_rooms_id ON rooms (id)
+2025-12-15 07:09:04,149 INFO sqlalchemy.engine.Engine [no key 0.00027s] ()
+2025-12-15 07:09:04,154 INFO sqlalchemy.engine.Engine 
+CREATE TABLE users (
+	id VARCHAR NOT NULL, 
+	room_id VARCHAR, 
+	name VARCHAR, 
+	color VARCHAR, 
+	is_host BOOLEAN, 
+	PRIMARY KEY (id), 
+	FOREIGN KEY(room_id) REFERENCES rooms (id)
+)
+
+
+2025-12-15 07:09:04,154 INFO sqlalchemy.engine.Engine [no key 0.00018s] ()
+2025-12-15 07:09:04,158 INFO sqlalchemy.engine.Engine CREATE INDEX ix_users_id ON users (id)
+2025-12-15 07:09:04,158 INFO sqlalchemy.engine.Engine [no key 0.00013s] ()
+2025-12-15 07:09:04,162 INFO sqlalchemy.engine.Engine COMMIT
+INFO:     Application startup complete.
+WARNING:  WatchFiles detected changes in 'main.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [77250]

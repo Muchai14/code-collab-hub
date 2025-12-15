@@ -4,3 +4,8 @@ python-socketio==5.11.0
 pydantic==2.6.0
 pytest==8.0.0
 httpx==0.26.0
+sqlalchemy
+asyncpg
+aiosqlite
+greenlet
+pytest-asyncio

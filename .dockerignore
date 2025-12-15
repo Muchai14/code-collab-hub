@@ -1,0 +1,81 @@
+# Git
+.git
+.gitignore
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+.venv
+venv/
+pip-log.txt
+pip-delete-this-directory.txt
+.pytest_cache/
+
+# Node
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Databases
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+sql_app.db
+test_integration.db
+
+# Logs
+*.log
+logs/
+
+# Build artifacts
+dist/
+build/
+*.egg-info/
+
+# Documentation (build output, keep source)
+site/
+
+# Docker
+docker-compose.override.yml
+
+# Testing
+coverage/
+.coverage
+htmlcov/
+
+# Temporary files
+*.tmp
+*.bak
+*.swp
+.pytest_cache
+
+# Frontend specific
+frontend/dist/
+frontend/build/
+frontend/.vite/
+frontend/coverage/
+
+# Backend specific
+backend/*.db
+backend/.venv/

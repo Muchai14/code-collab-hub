@@ -1,6 +1,6 @@
 from enum import Enum
 from typing import List, Optional
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 from datetime import datetime
 
 class Language(str, Enum):
@@ -10,6 +10,7 @@ class Language(str, Enum):
 class CursorPosition(BaseModel):
     lineNumber: int
     column: int
+    model_config = ConfigDict(from_attributes=True)
 
 class User(BaseModel):
     id: str
@@ -17,6 +18,7 @@ class User(BaseModel):
     color: str
     isHost: bool
     cursorPosition: Optional[CursorPosition] = None
+    model_config = ConfigDict(from_attributes=True)
 
 class Room(BaseModel):
     id: str
@@ -25,6 +27,7 @@ class Room(BaseModel):
     participants: List[User]
     createdAt: datetime
     hostId: str
+    model_config = ConfigDict(from_attributes=True)
 
 class CreateRoomRequest(BaseModel):
     hostName: str

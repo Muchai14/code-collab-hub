@@ -1,0 +1,64 @@
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: code-collab-db
+    environment:
+      POSTGRES_USER: code_collab
+      POSTGRES_PASSWORD: code_collab_password
+      POSTGRES_DB: code_collab_db
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U code_collab" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - app-network
+
+  # Backend API
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: code-collab-backend
+    environment:
+      DATABASE_URL: postgresql://code_collab:code_collab_password@postgres:5432/code_collab_db
+      PYTHONUNBUFFERED: 1
+    ports:
+      - "3001:3001"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./backend:/app
+      - /app/__pycache__
+    networks:
+      - app-network
+    command: uvicorn main:app --host 0.0.0.0 --port 3001 --reload
+
+  # Nginx web server with frontend
+  nginx:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: code-collab-nginx
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - backend
+    networks:
+      - app-network
+
+volumes:
+  postgres_data:
+
+
+networks:
+  app-network:
+    driver: bridge

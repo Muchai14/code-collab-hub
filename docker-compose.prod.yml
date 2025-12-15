@@ -1,0 +1,45 @@
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: code-collab-db-prod
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-code_collab}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-code_collab_password}
+      POSTGRES_DB: ${POSTGRES_DB:-code_collab_db}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-code_collab}" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - app-network
+
+  # Combined Frontend + Backend Application
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: code-collab-app
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-code_collab}:${POSTGRES_PASSWORD:-code_collab_password}@postgres:5432/${POSTGRES_DB:-code_collab_db}
+      PORT: 8080
+      PYTHONUNBUFFERED: 1
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - app-network
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+
+
+networks:
+  app-network:
+    driver: bridge

@@ -1,0 +1,35 @@
+# Render Deployment Blueprint
+# This file configures your application infrastructure on Render
+# Place this in the root of your repository
+
+services:
+  # PostgreSQL Database
+  - type: pserv
+    name: code-collab-db
+    plan: free  # Change to 'starter' or higher for production
+    region: oregon  # Choose your preferred region
+    databaseName: code_collab_db
+    databaseUser: code_collab
+    ipAllowList: []  # Empty = allow all (required for free tier)
+
+  # Web Service (Frontend + Backend)
+  - type: web
+    name: code-collab-hub
+    runtime: docker
+    plan: free  # Change to 'starter' or higher for production
+    region: oregon  # Choose your preferred region
+    branch: main  # Deploy from main branch
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /health
+    envVars:
+      - key: PORT
+        value: 8080
+      - key: PYTHONUNBUFFERED
+        value: 1
+      - key: DATABASE_URL
+        fromDatabase:
+          name: code-collab-db
+          property: connectionString
+    # Auto-deploy on every push to main
+    autoDeploy: true

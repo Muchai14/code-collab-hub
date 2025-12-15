@@ -1,16 +1,35 @@
 import socketio
 import uvicorn
-from fastapi import FastAPI, HTTPException
+import os
+from pathlib import Path
+from fastapi import FastAPI, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
+from sqlalchemy.orm import selectinload
 from uuid import uuid4
 from datetime import datetime
 from models import *
+from db_models import DBRoom, DBUser
+from database import get_db, engine, Base, SessionLocal
+
+from contextlib import asynccontextmanager
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup: Create tables
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+    yield
+    # Shutdown: (Optional cleanup if needed)
 
 # Initialize Socket.IO server
 sio = socketio.AsyncServer(async_mode='asgi', cors_allowed_origins='*')
 
 # Initialize FastAPI application
-fastapi_app = FastAPI(title="Code Collaboration Hub API")
+fastapi_app = FastAPI(title="Code Collaboration Hub API", lifespan=lifespan)
 
 # Add CORS middleware
 fastapi_app.add_middleware(
@@ -25,24 +44,6 @@ fastapi_app.add_middleware(
 DEFAULT_JS_CODE = '// Start coding...\nconsole.log("Hello");'
 DEFAULT_PY_CODE = '# Start coding...\nprint("Hello")'
 
-# Mock Database
-rooms: dict[str, Room] = {}
-
-# Populate with some fake data for testing
-fake_room_id = "test-room"
-fake_host_id = "host-123"
-rooms[fake_room_id] = Room(
-    id=fake_room_id,
-    code=DEFAULT_PY_CODE,
-    language=Language.python,
-    participants=[
-        User(id=fake_host_id, name="Alice (Host)", color="#22c55e", isHost=True),
-        User(id="user-456", name="Bob", color="#3b82f6", isHost=False)
-    ],
-    createdAt=datetime.now(),
-    hostId=fake_host_id
-)
-
 @fastapi_app.get("/")
 async def root():
     return {"message": "Code Collaboration Hub API is running", "docs": "/docs"}
@@ -52,52 +53,71 @@ async def health_check():
     return {"status": "ok"}
 
 @fastapi_app.post("/api/rooms", response_model=CreateRoomResponse, status_code=201)
-async def create_room(request: CreateRoomRequest):
+async def create_room(request: CreateRoomRequest, db: AsyncSession = Depends(get_db)):
     room_id = str(uuid4())[:8]
     user_id = str(uuid4())
     
     initial_code = DEFAULT_PY_CODE if request.language == Language.python else DEFAULT_JS_CODE
     
-    host_user = User(
+    db_room = DBRoom(
+        id=room_id,
+        code=initial_code,
+        language=request.language,
+        hostId=user_id,
+        createdAt=datetime.now()
+    )
+    db.add(db_room)
+    
+    db_user = DBUser(
         id=user_id,
+        roomId=room_id,
         name=request.hostName,
         color="#22c55e",
         isHost=True
     )
+    db.add(db_user)
     
-    room = Room(
-        id=room_id,
-        code=initial_code,
-        language=request.language,
-        participants=[host_user],
-        createdAt=datetime.now(),
-        hostId=user_id
-    )
+    await db.commit()
+    await db.refresh(db_room)
+    # Refresh to load participants (though we just added one, relations might be null until refresh/access)
+    # Actually, we can just construct the response manually or refresh. 
+    # To ensure participants relationship is loaded:
+    result = await db.execute(select(DBRoom).options(selectinload(DBRoom.participants)).filter(DBRoom.id == room_id))
+    room = result.scalars().first()
     
-    rooms[room_id] = room
-    return CreateRoomResponse(room=room, user=host_user)
+    return CreateRoomResponse(room=Room.model_validate(room), user=User.model_validate(db_user))
 
 @fastapi_app.post("/api/rooms/{room_id}/join", response_model=JoinRoomResponse)
-async def join_room(room_id: str, request: JoinRoomRequest):
-    if room_id not in rooms:
+async def join_room(room_id: str, request: JoinRoomRequest, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(DBRoom).options(selectinload(DBRoom.participants)).filter(DBRoom.id == room_id))
+    room = result.scalars().first()
+    
+    if not room:
         raise HTTPException(status_code=404, detail="Room not found")
     
     user_id = str(uuid4())
-    user = User(
+    db_user = DBUser(
         id=user_id,
+        roomId=room_id,
         name=request.userName,
         color="#3b82f6",
         isHost=False
     )
+    db.add(db_user)
+    await db.commit()
+    await db.refresh(room) # Refresh room to include new participant in the list
     
-    rooms[room_id].participants.append(user)
-    return JoinRoomResponse(room=rooms[room_id], user=user)
+    # We need to return the created user object, and the updated room
+    return JoinRoomResponse(room=Room.model_validate(room), user=User.model_validate(db_user))
 
 @fastapi_app.get("/api/rooms/{room_id}", response_model=Room)
-async def get_room(room_id: str):
-    if room_id not in rooms:
+async def get_room(room_id: str, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(DBRoom).options(selectinload(DBRoom.participants)).filter(DBRoom.id == room_id))
+    room = result.scalars().first()
+    
+    if not room:
         raise HTTPException(status_code=404, detail="Room not found")
-    return rooms[room_id]
+    return Room.model_validate(room)
 
 # Socket.IO Events
 @sio.event
@@ -112,15 +132,21 @@ async def disconnect(sid):
 
 @sio.on("join-room")
 async def handle_join_room(sid, room_id):
+    # Just socket join, verification could be added
     await sio.enter_room(sid, room_id)
 
 @sio.on("code-update")
 async def handle_code_update(sid, data):
     room_id = data.get("roomId")
     code = data.get("code")
-    if room_id in rooms:
-        rooms[room_id].code = code
-        await sio.emit("code-update", {"code": code}, room=room_id, skip_sid=sid)
+    
+    async with SessionLocal() as db:
+        result = await db.execute(select(DBRoom).filter(DBRoom.id == room_id))
+        room = result.scalars().first()
+        if room:
+            room.code = code
+            await db.commit()
+            await sio.emit("code-update", {"code": code}, room=room_id, skip_sid=sid)
 
 @sio.on("cursor-update")
 async def handle_cursor_update(sid, data):
@@ -132,9 +158,14 @@ async def handle_cursor_update(sid, data):
 async def handle_language_update(sid, data):
     room_id = data.get("roomId")
     language = data.get("language")
-    if room_id in rooms:
-        rooms[room_id].language = language
-        await sio.emit("language-update", {"language": language}, room=room_id, skip_sid=sid)
+    
+    async with SessionLocal() as db:
+        result = await db.execute(select(DBRoom).filter(DBRoom.id == room_id))
+        room = result.scalars().first()
+        if room:
+            room.language = language
+            await db.commit()
+            await sio.emit("language-update", {"language": language}, room=room_id, skip_sid=sid)
 
 @sio.on("execution-result")
 async def handle_execution_result(sid, data):
@@ -142,8 +173,28 @@ async def handle_execution_result(sid, data):
     result = data.get("result")
     await sio.emit("execution-result", {"result": result}, room=room_id, skip_sid=sid)
 
+# Check if static directory exists (for production deployments)
+STATIC_DIR = Path(__file__).parent / "static"
+if STATIC_DIR.exists():
+    # Mount static files
+    fastapi_app.mount("/assets", StaticFiles(directory=str(STATIC_DIR / "assets")), name="assets")
+    
+    # Serve index.html for all non-API routes (SPA fallback)
+    @fastapi_app.get("/{full_path:path}")
+    async def serve_spa(full_path: str):
+        # Don't intercept API, health, docs, or socket.io routes
+        if full_path.startswith(("api/", "health", "docs", "redoc", "openapi.json", "socket.io")):
+            raise HTTPException(status_code=404, detail="Not found")
+        
+        # Serve index.html for all other routes (SPA routing)
+        index_file = STATIC_DIR / "index.html"
+        if index_file.exists():
+            return FileResponse(index_file)
+        raise HTTPException(status_code=404, detail="Frontend not found")
+
 # Mount the socket app to the FastAPI app
 app = socketio.ASGIApp(sio, fastapi_app)
 
 if __name__ == "__main__":
-    uvicorn.run("main:app", host="0.0.0.0", port=3001, reload=True)
+    port = int(os.getenv("PORT", 3001))
+    uvicorn.run("main:app", host="0.0.0.0", port=port, reload=True)
