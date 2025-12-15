@@ -2,11 +2,10 @@
     "name": "code-collab-hub",
     "private": true,
     "workspaces": [
-        "frontend",
-        "backend"
+        "frontend"
     ],
     "scripts": {
-        "dev": "concurrently \"npm run dev -w backend\" \"npm run dev -w frontend\"",
+        "dev": "concurrently -n \"FE,BE\" -c \"cyan,green\" \"npm run dev -w frontend\" \"cd backend && make dev\"",
         "install:all": "npm install",
         "test": "npm test --workspaces --if-present"
     },
