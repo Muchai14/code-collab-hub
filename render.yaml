@@ -1,11 +1,12 @@
-services:
-  # PostgreSQL Database
-  - type: pserv
-    name: code-collab-db
+# Render Deployment Blueprint
+databases:
+  - name: code-collab-db
     plan: free
     region: oregon
+    user: code_collab
+    databaseName: code_collab_db
 
-  # Web Service (Frontend + Backend)
+services:
   - type: web
     name: code-collab-hub
     runtime: docker
