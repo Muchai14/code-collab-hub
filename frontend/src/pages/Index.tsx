@@ -1,9 +1,12 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Code2, Users, Zap, Shield } from 'lucide-react';
 import { CreateRoomDialog } from '@/components/CreateRoomDialog';
 import { JoinRoomDialog } from '@/components/JoinRoomDialog';
-import { useRoom } from '@/hooks/useRoom';
+import { api } from '@/services/api';
+import { useToast } from '@/hooks/use-toast';
 import { preloadPyodide } from '@/services/codeExecution';
+import type { Language } from '@/services/types';
 
 const FEATURES = [
   {
@@ -29,12 +32,60 @@ const FEATURES = [
 ];
 
 export default function Index() {
-  const { createRoom, joinRoom, isLoading } = useRoom();
+  const [isLoading, setIsLoading] = useState(false);
+  const navigate = useNavigate();
+  const { toast } = useToast();
 
   // Preload Pyodide for faster Python execution
   useEffect(() => {
     preloadPyodide();
   }, []);
+
+  const handleCreateRoom = async (hostName: string, language: Language) => {
+    setIsLoading(true);
+    try {
+      // Direct API call to avoid hook state management
+      const { room, user } = await api.createRoom({ hostName, language });
+
+      toast({
+        title: 'Room created!',
+        description: 'Share the link with others to start the interview.',
+      });
+
+      // Navigate with state so we don't have to fetch/join again
+      navigate(`/room/${room.id}`, { state: { room, currentUser: user } });
+    } catch (error) {
+      toast({
+        title: 'Failed to create room',
+        description: error instanceof Error ? error.message : 'Unknown error',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleJoinRoom = async (roomId: string, userName: string) => {
+    setIsLoading(true);
+    try {
+      const { room, user } = await api.joinRoom({ roomId, userName });
+
+      toast({
+        title: 'Joined room!',
+        description: `Welcome to the interview, ${userName}.`,
+      });
+
+      navigate(`/room/${room.id}`, { state: { room, currentUser: user } });
+    } catch (error) {
+      toast({
+        title: 'Failed to join room',
+        description: error instanceof Error ? error.message : 'Room not found',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
@@ -66,8 +117,8 @@ export default function Index() {
             </p>
 
             <div className="flex flex-wrap items-center justify-center gap-4 pt-4">
-              <CreateRoomDialog onCreateRoom={createRoom} isLoading={isLoading} />
-              <JoinRoomDialog onJoinRoom={joinRoom} isLoading={isLoading} />
+              <CreateRoomDialog onCreateRoom={handleCreateRoom} isLoading={isLoading} />
+              <JoinRoomDialog onJoinRoom={handleJoinRoom} isLoading={isLoading} />
             </div>
           </div>
         </section>

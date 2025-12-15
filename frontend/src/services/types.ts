@@ -36,12 +36,31 @@ export interface RoomState {
   executionResult: CodeExecutionResult | null;
 }
 
-export interface WebSocketMessage {
-  type: 'code_update' | 'cursor_update' | 'user_joined' | 'user_left' | 'execution_result';
-  payload: unknown;
-  userId: string;
-  timestamp: number;
-}
+export type WebSocketMessage =
+  | {
+    type: 'code_update';
+    payload: { code?: string; language?: Language };
+    userId: string;
+    timestamp: number;
+  }
+  | {
+    type: 'cursor_update';
+    payload: CursorPosition;
+    userId: string;
+    timestamp: number;
+  }
+  | {
+    type: 'user_joined' | 'user_left';
+    payload: User;
+    userId: string;
+    timestamp: number;
+  }
+  | {
+    type: 'execution_result';
+    payload: CodeExecutionResult;
+    userId: string;
+    timestamp: number;
+  };
 
 export interface CreateRoomRequest {
   hostName: string;

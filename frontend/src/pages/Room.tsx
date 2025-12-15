@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { RoomHeader } from '@/components/RoomHeader';
 import { CodeEditor } from '@/components/CodeEditor';
 import { OutputPanel } from '@/components/OutputPanel';
@@ -10,10 +10,12 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2 } from 'lucide-react';
+import type { Room, User } from '@/services/types';
 
 export default function Room() {
   const { roomId } = useParams<{ roomId: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const [name, setName] = useState('');
   const [isJoining, setIsJoining] = useState(false);
 
@@ -30,7 +32,9 @@ export default function Room() {
     updateLanguage,
     runCode,
     clearOutput,
-  } = useRoom();
+  } = useRoom({
+    initialState: location.state as { room: Room; currentUser: User } | undefined,
+  });
 
   // If user is not in room, show join form
   const needsToJoin = !room || !currentUser;

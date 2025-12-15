@@ -14,12 +14,12 @@ export function OutputPanel({ result, isExecuting, onClear }: OutputPanelProps) 
   const hasOutput = result?.output;
 
   return (
-    <div className="flex h-full flex-col overflow-hidden rounded-lg border border-border bg-terminal-bg">
+    <div className="flex h-full flex-col overflow-hidden rounded-lg border border-border bg-zinc-900">
       {/* Header */}
       <div className="flex items-center justify-between border-b border-border px-4 py-2">
         <div className="flex items-center gap-2">
-          <Terminal className="h-4 w-4 text-muted-foreground" />
-          <span className="text-sm font-medium text-foreground">Output</span>
+          <Terminal className="h-4 w-4 text-gray-400" />
+          <span className="text-sm font-medium text-gray-200">Output</span>
           {result && (
             <div className="flex items-center gap-1.5">
               {hasError ? (
@@ -59,7 +59,7 @@ export function OutputPanel({ result, isExecuting, onClear }: OutputPanelProps) 
               <pre
                 className={cn(
                   'font-mono text-sm whitespace-pre-wrap',
-                  hasError ? 'text-muted-foreground' : 'text-foreground'
+                  hasError ? 'text-red-400' : 'text-white'
                 )}
               >
                 {result.output}

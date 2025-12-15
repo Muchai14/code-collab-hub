@@ -48,32 +48,48 @@ function executeJavaScript(code: string): CodeExecutionResult {
   const startTime = performance.now();
   const logs: string[] = [];
 
+  // Helper to safely format arguments
+  const formatArg = (arg: unknown): string => {
+    if (typeof arg === 'object' && arg !== null) {
+      try {
+        return JSON.stringify(arg, null, 2);
+      } catch {
+        return String(arg);
+      }
+    }
+    return String(arg);
+  };
+
   // Create a custom console to capture output
   const customConsole = {
     log: (...args: unknown[]) => {
-      logs.push(args.map(String).join(' '));
+      const formatted = args.map(formatArg).join(' ');
+      logs.push(formatted);
+      console.log('[User Code]', ...args); // Mirror to real console
     },
     error: (...args: unknown[]) => {
-      logs.push(`Error: ${args.map(String).join(' ')}`);
+      const formatted = args.map(formatArg).join(' ');
+      logs.push(`Error: ${formatted}`);
+      console.error('[User Code]', ...args);
     },
     warn: (...args: unknown[]) => {
-      logs.push(`Warning: ${args.map(String).join(' ')}`);
+      const formatted = args.map(formatArg).join(' ');
+      logs.push(`Warning: ${formatted}`);
+      console.warn('[User Code]', ...args);
     },
     info: (...args: unknown[]) => {
-      logs.push(args.map(String).join(' '));
+      const formatted = args.map(formatArg).join(' ');
+      logs.push(formatted);
+      console.info('[User Code]', ...args);
     },
   };
 
   try {
-    // Create a sandboxed function
-    const sandboxedCode = `
-      (function(console) {
-        ${code}
-      })
-    `;
+    // Wrap code in a function that takes console as argument
+    // We use new Function instead of eval for better scope isolation
+    // The code behaves as if it's inside a function body
+    const fn = new Function('console', code);
 
-    // eslint-disable-next-line no-eval
-    const fn = eval(sandboxedCode);
     fn(customConsole);
 
     const executionTime = performance.now() - startTime;
