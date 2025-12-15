@@ -44,8 +44,8 @@ fastapi_app.add_middleware(
 DEFAULT_JS_CODE = '// Start coding...\nconsole.log("Hello");'
 DEFAULT_PY_CODE = '# Start coding...\nprint("Hello")'
 
-@fastapi_app.get("/")
-async def root():
+@fastapi_app.get("/api")
+async def api_root():
     return {"message": "Code Collaboration Hub API is running", "docs": "/docs"}
 
 @fastapi_app.get("/health")
@@ -176,6 +176,14 @@ async def handle_execution_result(sid, data):
 # Check if static directory exists (for production deployments)
 STATIC_DIR = Path(__file__).parent / "static"
 if STATIC_DIR.exists():
+    # Serve index.html at root
+    @fastapi_app.get("/")
+    async def serve_root():
+        index_file = STATIC_DIR / "index.html"
+        if index_file.exists():
+            return FileResponse(index_file)
+        return {"message": "Frontend not found (build missing)"}
+
     # Mount static files
     fastapi_app.mount("/assets", StaticFiles(directory=str(STATIC_DIR / "assets")), name="assets")
     
