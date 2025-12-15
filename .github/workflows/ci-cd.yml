@@ -32,7 +32,7 @@ jobs:
 
       - name: Run Tests
         working-directory: ./frontend
-        run: npm test
+        run: npm test -- --run
 
   # -------------------------------------------------------------
   # 2. Backend Unit Tests
