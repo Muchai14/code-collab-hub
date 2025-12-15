@@ -1,0 +1,104 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  # -------------------------------------------------------------
+  # 1. Frontend Tests
+  # -------------------------------------------------------------
+  test-frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install Dependencies
+        working-directory: ./frontend
+        run: npm ci
+
+      - name: Run Tests
+        working-directory: ./frontend
+        run: npm test
+
+  # -------------------------------------------------------------
+  # 2. Backend Unit Tests
+  # -------------------------------------------------------------
+  test-backend-unit:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./backend
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: Install Dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run Unit Tests
+        run: pytest tests/
+
+  # -------------------------------------------------------------
+  # 3. Backend Integration Tests
+  # -------------------------------------------------------------
+  test-backend-integration:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./backend
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: Install Dependencies
+        run: pip install -r requirements.txt
+
+      # Integration tests use SQLite by default which is fine for CI
+      # If you need Postgres, we can add a service container here
+      - name: Run Integration Tests
+        run: pytest tests_integration/
+
+  # -------------------------------------------------------------
+  # 4. Deploy to Render (Only on main branch & success)
+  # -------------------------------------------------------------
+  deploy:
+    needs: [test-frontend, test-backend-unit, test-backend-integration]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+      - name: Trigger Render Deploy
+        # We use curl to hit the Render Deploy Hook URL
+        # You must set RENDER_DEPLOY_HOOK_URL in GitHub Secrets
+        run: |
+          if [ -z "${{ secrets.RENDER_DEPLOY_HOOK_URL }}" ]; then
+            echo "Error: RENDER_DEPLOY_HOOK_URL secret is not set!"
+            echo "Please retrieve your Deploy Hook URL from Render Dashboard:"
+            echo "Service Settings -> Build & Deploy -> Deploy Hook"
+            exit 1
+          fi
+          
+          curl -X POST "${{ secrets.RENDER_DEPLOY_HOOK_URL }}"
+        env:
+            # We don't print the secret, just use it
+            RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}

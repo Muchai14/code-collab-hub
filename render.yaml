@@ -25,4 +25,4 @@ services:
         fromDatabase:
           name: code-collab-db
           property: connectionString
-    autoDeploy: true
+    autoDeploy: false
