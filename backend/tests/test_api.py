@@ -7,14 +7,6 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from main import fastapi_app
 
-# Enable lifespan to ensure database tables are created
-client = TestClient(fastapi_app, raise_server_exceptions=True)
-
-# Manually trigger lifespan for test setup
-with client:
-    pass  # This will run the lifespan startup which creates tables
-
-# Recreate client for actual tests
 client = TestClient(fastapi_app)
 
 def test_create_room():
